@@ -31,6 +31,7 @@ class Fluent::ElasticsearchOutput < Fluent::BufferedOutput
   config_param :time_key, :string, :default => nil
   config_param :op_type, :string, :default => "index"
   config_param :update_retry_on_conflict, :integer, :default => 0
+  config_param :update_updates_timestamp, :bool, :default => true
 
   include Fluent::SetTagKeyMixin
   config_set_default :include_tag_key, false
@@ -164,6 +165,10 @@ class Fluent::ElasticsearchOutput < Fluent::BufferedOutput
 
       if @parent_key && record[@parent_key]
         meta[@op_type]['_parent'] = record[@parent_key]
+      end
+
+      if @op_type == 'update' and not @update_updates_timestamp
+        record.delete('@timestamp')
       end
 
       if @op_type == 'update'
