@@ -29,6 +29,8 @@ class Fluent::ElasticsearchOutput < Fluent::BufferedOutput
   config_param :reload_connections, :bool, :default => true
   config_param :reload_on_failure, :bool, :default => false
   config_param :time_key, :string, :default => nil
+  config_param :op_type, :string, :default => "index"
+  config_param :update_retry_on_conflict, :integer, :default => 0
 
   include Fluent::SetTagKeyMixin
   config_set_default :include_tag_key, false
@@ -146,15 +148,26 @@ class Fluent::ElasticsearchOutput < Fluent::BufferedOutput
         record.merge!(@tag_key => tag)
       end
 
-      meta = { "index" => {"_index" => target_index, "_type" => type_name} }
+      meta = { @op_type => {"_index" => target_index, "_type" => type_name} }
       if @id_key && record.has_key?(@id_key) && record[@id_key]
+        meta[@op_type]['_id'] = record[@id_key]
         if not @include_id_key
           record.delete(@id_key)
         end
+      elsif @op_type == 'update'
+        log.warn "Update record needs an id_key: #{record}"
+        next
+      end
+      if @op_type == 'update'
+        meta[@op_type]['_retry_on_conflict'] = @update_retry_on_conflict
       end
 
       if @parent_key && record[@parent_key]
-        meta['index']['_parent'] = record[@parent_key]
+        meta[@op_type]['_parent'] = record[@parent_key]
+      end
+
+      if @op_type == 'update'
+        record = {'doc' => record}
       end
 
       bulk_message << meta
