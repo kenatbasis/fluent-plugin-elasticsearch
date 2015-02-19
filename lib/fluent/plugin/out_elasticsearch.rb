@@ -23,6 +23,7 @@ class Fluent::ElasticsearchOutput < Fluent::BufferedOutput
   config_param :type_name, :string, :default => "fluentd"
   config_param :index_name, :string, :default => "fluentd"
   config_param :id_key, :string, :default => nil
+  config_param :include_id_key, :bool, :default => false
   config_param :parent_key, :string, :default => nil
   config_param :request_timeout, :time, :default => 5
   config_param :reload_connections, :bool, :default => true
@@ -146,8 +147,10 @@ class Fluent::ElasticsearchOutput < Fluent::BufferedOutput
       end
 
       meta = { "index" => {"_index" => target_index, "_type" => type_name} }
-      if @id_key && record[@id_key]
-        meta['index']['_id'] = record[@id_key]
+      if @id_key && record.has_key?(@id_key) && record[@id_key]
+        if not @include_id_key
+          record.delete(@id_key)
+        end
       end
 
       if @parent_key && record[@parent_key]
