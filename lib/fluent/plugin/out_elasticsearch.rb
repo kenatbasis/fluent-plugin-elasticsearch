@@ -159,20 +159,17 @@ class Fluent::ElasticsearchOutput < Fluent::BufferedOutput
         log.warn "Update record needs an id_key: #{record}"
         next
       end
-      if @op_type == 'update'
-        meta[@op_type]['_retry_on_conflict'] = @update_retry_on_conflict
-      end
 
       if @parent_key && record[@parent_key]
         meta[@op_type]['_parent'] = record[@parent_key]
       end
 
-      if @op_type == 'update' and not @update_updates_timestamp
-        record.delete('@timestamp')
-      end
-
       if @op_type == 'update'
+        meta[@op_type]['_retry_on_conflict'] = @update_retry_on_conflict
         record = {'doc' => record}
+        if not @update_updates_timestamp
+          record.delete('@timestamp')
+        end
       end
 
       bulk_message << meta
