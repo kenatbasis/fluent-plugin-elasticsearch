@@ -32,6 +32,7 @@ class Fluent::ElasticsearchOutput < Fluent::BufferedOutput
   config_param :op_type, :string, :default => "index"
   config_param :update_retry_on_conflict, :integer, :default => 0
   config_param :update_updates_timestamp, :bool, :default => true
+  config_param :doc_as_upsert, :bool, :default => false
 
   include Fluent::SetTagKeyMixin
   config_set_default :include_tag_key, false
@@ -166,9 +167,12 @@ class Fluent::ElasticsearchOutput < Fluent::BufferedOutput
 
       if @op_type == 'update'
         meta[@op_type]['_retry_on_conflict'] = @update_retry_on_conflict
-        record = {'doc' => record}
         if not @update_updates_timestamp
           record.delete('@timestamp')
+        end
+        record = {'doc' => record}
+        if @doc_as_upsert
+          record['doc_as_upsert'] = true
         end
       end
 
